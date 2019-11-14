@@ -1,4 +1,4 @@
-## compress-upload-image
+## [compress-upload-image](https://github.com/changyuwu/compress-upload-image)
 
 ### 实现
 把上传的图片在本地用canvas画出来，从新设置其尺寸，再转化成blob data,
