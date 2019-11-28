@@ -3,3 +3,4 @@ package-lock.json
 webpack.config.js
 .idea/
 .gitignore
+index.html

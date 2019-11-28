@@ -21,11 +21,20 @@ new CanvasUploaderTrasnsfer({
     width: 1000,
     height: 1000
   },
-  transferCallback(blob_data) { // 压缩后回调
+  multiple: false // 是否支持单次多个上传
+  /**
+    callback params
+    list: [
+      list_item: {file: file, name: file_name}
+    ]
+  **/
+  transferCallback(file_list) { // 压缩后回调
     /* do something like
     let form_data = new FormData()
-    form_data.append('file', blob_data)
-    do ajax ...
+    for (var i = 0; i < file_list.length; i++) {
+      form_data.append('file[]', file_list[i].file, file_list[i].name)
+    }
+    do ajax with form_data ...
     */
   }
 })

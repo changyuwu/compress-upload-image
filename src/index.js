@@ -2,13 +2,14 @@ class CanvasTransfer {
   constructor(options) {
     let default_options = {
       upload_type: 'blob',
-      upload_input_id: `canvas-compress-upload-input-ele-${this.getUuid()}`,
-      compress_canvas_id: `canvas-compress-upload-canvas-ele-${this.getUuid()}`,
+      upload_input_id: `canvas-compress-upload-input-ele-${this._getUuid()}`,
+      compress_canvas_id: `canvas-compress-upload-canvas-ele-${this._getUuid()}`,
       upload_btn_selector: '',
       max_size: {
         width: 500,
         height: 500
       },
+      multiple: false,
       transferCallback: () => {}
     }
     this.options = Object.assign({}, default_options, options)
@@ -39,6 +40,7 @@ class CanvasTransfer {
       input.setAttribute('type', 'file')
       input.setAttribute('id', this.options.upload_input_id)
       input.setAttribute('accept', 'image/*')
+      this.options.multiple && (input.setAttribute('multiple', 'multiple'))
       input.style.display = 'none'
       input.addEventListener('change', function() {
         that.onInputChange()
@@ -57,26 +59,46 @@ class CanvasTransfer {
 
   onInputChange() {
     const that = this
-    let file = this.inputEle.files[0]
+    let files = this.inputEle.files
+    let un_transfer_files = this.getEmptyArray(files.length).map(_ => {
+      return {
+        file: files[_],
+        name: files[_].name
+      }
+    })
     if (!window.FileReader || !this.canvasEle.getContext || !window.atob || !window.Uint8Array || this.options.upload_type !== 'blob') {
       console.log('浏览器不支持 canvas 压缩上传')
-      this.doTransferComplete(file)
+      this.doTransferComplete(un_transfer_files)
       return
     }
-    let reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onload = function () {
-      let content = this.result
-      let img = new Image()
-      img.src = content
-      img.onload = function () {
-        that.compressEvent({img, file})
+    let transfer_promises = this.getEmptyArray(files.length).map(_ => this.transferSingleFilePromise(files[_]))
+    Promise.all(transfer_promises).then(res => {
+      console.log('res', res)
+      this.doTransferComplete(res)
+    }).catch(err => {
+      console.log('err', err)
+      this.doTransferComplete(un_transfer_files)
+    })
+  }
+
+  transferSingleFilePromise(file) {
+    const that = this
+    return new Promise(resolve => {
+      let reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = function () {
+        let content = this.result
+        let img = new Image()
+        img.src = content
+        img.onload = function () {
+          resolve(that.compressEvent({img, file}))
+        }
       }
-    }
+    })
   }
 
   compressEvent({img, file}) {
-    let canvas = this.canvasEle
+    let canvas = this.createRandomCanvasEle()
     let ctx = canvas.getContext('2d')
     let width = img.width
     let height = img.height
@@ -91,7 +113,17 @@ class CanvasTransfer {
     let file_type = file.type ? file.type : "image/jpeg"
     let dataURL = canvas.toDataURL(file_type)
     let blob_data = this.dataURItoBlob(dataURL)
-    this.doTransferComplete(blob_data)
+    document.body.removeChild(canvas)
+    return {file: blob_data, name: file.name}
+  }
+
+  createRandomCanvasEle() {
+    let canvas_id = `new_add_canvas-compress-upload-canvas-ele-${this._getUuid()}`
+    let canvas = document.createElement('canvas')
+    canvas.setAttribute('id', this.options.compress_canvas_id)
+    canvas.style.display = 'none'
+    document.body.appendChild(canvas)
+    return canvas
   }
 
   dataURItoBlob(data_url){
@@ -120,13 +152,26 @@ class CanvasTransfer {
     return Math.min(scale_x, scale_y) > 1 ? 1 : Math.min(scale_x, scale_y)
   }
 
-  getUuid(length = 30) {
+  _getUuid(length = 30) {
     let guid = ""
     for (let i = 1; i <= length; i++) {
       let n = Math.floor(Math.random() * 16.0).toString(16)
       guid += n
     }
     return `a${guid}`
+  }
+
+  static getUuid(length = 30) {
+    let guid = ""
+    for (let i = 1; i <= length; i++) {
+      let n = Math.floor(Math.random() * 16.0).toString(16)
+      guid += n
+    }
+    return `a${guid}`
+  }
+  
+  getEmptyArray(len) {
+    return Array.from(new Array(len).keys())
   }
 }
 
